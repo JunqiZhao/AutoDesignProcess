@@ -27,3 +27,4 @@ TransactionManager.Instance.EnsureInTransaction(doc)
 for name in WorksetName:
     Workset.Create(doc,name)
 
+#Test of creating views in batch
