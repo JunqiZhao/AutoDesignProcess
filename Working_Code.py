@@ -79,7 +79,13 @@ if None == errorReport:
 else:
     OUT = errorReport
     
+<<<<<<< HEAD
 
+=======
+    
+    
+    
+>>>>>>> InvestigatingBatchViewsSet
 '''Try to Simplify the Turn on/off funcationality script'''
 
 # Set View Properties (Code: https://forum.dynamobim.com/t/setting-view-template-includes/15969)
@@ -118,6 +124,7 @@ for i in IN[0]: #list of view templates
 	    	vt.SetNonControlledTemplateParameterIds(sysList) #This API will turn off the specified parameters
 TransactionManager.Instance.TransactionTaskDone()
 # Assign your output to the OUT variable
+<<<<<<< HEAD
 OUT=0
 
 
@@ -141,3 +148,6 @@ OUT=0
 
 
 
+=======
+OUT=0
+>>>>>>> InvestigatingBatchViewsSet
