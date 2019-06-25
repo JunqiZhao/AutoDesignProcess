@@ -163,65 +163,6 @@ TransactionManager.Instance.TransactionTaskDone()
 OUT=0
 
 '''Set the V/G of worksets'''
-# Test Case
-temp_name='ELEC_FA DEMO'
-worksets=['ELEC_FA_Existing','ELEC_FA_Demo','ELEC_LTG_Existing','PLBG_FP_Existing']
-
-# Function to find the corresponding worksets to a view template
-def WSvisibility(temp_name,worksets):
-    rst=[]
-    trade=temp_name.split()[0]
-    for i in worksets:
-        if trade in i:
-            rst.append(temp_name.i)
-        else:
-            TurnOFF(temp_name.i) # Turn off all the incorrest trades
-    for i in rst:
-        if "DEMO" in temp_name:
-            if "DEMO" in i or "Existing" in i:
-                TurnON(temp_name.i) # Turn on all the correct trades with correct phase
-            else:
-                TurnOFF(temp_name.i) # Turn off all the correct trades with wrong phase
-        elif "NEW" in temp_name:
-            if "NEW" in i or "Existing" in i:
-                TurnON(temp_name.i) # Turn on all the correct trades with correct phase
-            else:
-                TurnOFF(temp_name.i) # Turn off all the correct trades with wrong phase
-
-# Function for setup view template visibility in batch
-def Batch_WSvisibility(temp_names,worksets):
-    for temp_name in temp_names:
-        WSvisibility(temp_name,worksets)
-        
-        
-# Function for controlling visibility
-        
-## Package Preparation
-import clr
-clr.AddReference('RevitServices')
-import RevitServices
-from RevitServices.Persistence import DocumentManager
-from RevitServices.Transactions import TransactionManager
-clr.AddReference('RevitAPI')
-import Autodesk
-from Autodesk.Revit.DB import *
-
-## Setup Visibility
-def TurnON(i):
-    Workset = i #workset name
-    doc = DocumentManager.Instance.CurrentDBDocument
-    view = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument.ActiveView
-    coll = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset)
-    TransactionManager.Instance.EnsureInTransaction(doc)
-    #Turn on the identified worksets and turn off others
-    for ws in coll:
-    	if ws.Name.Contains(Workset):
-    		view.SetWorksetVisibility(ws.Id , WorksetVisibility.Visible)
-        else:
-            view.SetWorksetVisibility(ws.Id , WorksetVisibility.Hidden)
-    TransactionManager.Instance.TransactionTaskDone()
-
-                
 ###Test of accessing view template by names###
 import clr
 clr.AddReference('RevitAPI')
@@ -230,15 +171,14 @@ clr.AddReference('RevitServices')
 from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 doc=DocumentManager.Instance.CurrentDBDocument #access the currently openned project
-vt=[t for t in FilteredElementCollector(doc).OfClass(View).ToElements() if t.IsTemplate and t.ViewName=='ELEC_FA DEMO RCP']
-vt_temp=[]
-vt_temp.append(vt[0].ViewName)
-vt=vt[0]
-trade,phase=vt_temp[0].split()[0],vt_temp[0].split()[1]
-#Set the visibility of the related worksets
+
 ## Get the related worksets
-def select_ws(worksets,trade,phase):
-    rst=[i for i in worksets if trade in i and phase in i]
+def select_ws(worksets,trade,phase): #The input worksets is the name list of all available worksets
+    rst=[]
+    for i in worksets:
+    	if trade in i:
+    		if phase in i or 'EXISTING' in i:
+    			rst.append(i)
     return rst
 ## Setup Visibility
 def TurnON(vt,targeted_ws): #Turn on the related worksets of a view template
@@ -250,8 +190,31 @@ def TurnON(vt,targeted_ws): #Turn on the related worksets of a view template
     #Turn on the identified worksets and turn off others
     for Workset in targeted_ws:
         for ws in coll:
-    	    if ws.Name.Contains(Workset):
-    		    view.SetWorksetVisibility(ws.Id , WorksetVisibility.Visible)
-            else:
-                view.SetWorksetVisibility(ws.Id , WorksetVisibility.Hidden)
+            if vt.IsWorksetVisible(ws.Id):
+                continue
+            if ws.Name.Contains(Workset) or ws.Name.Contains('LINKED') or ws.Name.Contains('Shared') or ws.Name.Contains('Workset1'):
+                view.SetWorksetVisibility(ws.Id , WorksetVisibility.Visible)
+            #else:
+                #view.SetWorksetVisibility(ws.Id , WorksetVisibility.Hidden)
     TransactionManager.Instance.TransactionTaskDone()
+
+def TurnoffAll(vt):
+    doc = DocumentManager.Instance.CurrentDBDocument
+    TransactionManager.Instance.EnsureInTransaction(doc)
+    coll = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset)
+    TransactionManager.Instance.EnsureInTransaction(doc)
+    for ws in coll:
+        vt.SetWorksetVisibility(ws.Id , WorksetVisibility.Hidden)
+
+#get all the view template for modification    
+vt=[t for t in FilteredElementCollector(doc).OfClass(View).ToElements() if t.IsTemplate and 'DEMO' in t.ViewName or 'NEW' in t.ViewName]
+#modify the visibility
+for temp in vt:
+    vt_temp=[]
+    TurnoffAll(temp)
+    vt_temp.append(temp.ViewName)
+    trade,phase=vt_temp[0].split()[0],vt_temp[0].split()[1]
+    targeted_ws=select_ws(IN[0],trade,phase)
+    TurnON(temp,targeted_ws)
+
+OUT=targeted_ws
