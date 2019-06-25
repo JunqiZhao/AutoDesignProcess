@@ -163,7 +163,7 @@ TransactionManager.Instance.TransactionTaskDone()
 OUT=0
 
 '''Set the V/G of worksets'''
-###Test of accessing view template by names###
+# Package Preparation
 import clr
 clr.AddReference('RevitAPI')
 from Autodesk.Revit.DB import *
@@ -172,16 +172,17 @@ from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 doc=DocumentManager.Instance.CurrentDBDocument #access the currently openned project
 
-## Get the related worksets
-def select_ws(worksets,trade,phase): #The input worksets is the name list of all available worksets
+# Define Functions
+## Select worksets to be visible in the current view template
+def select_ws(worksets,trade,phase): #The input "worksets" is the name list of all available worksets, "trade" and "phase" are extracted from view template name
     rst=[]
     for i in worksets:
     	if trade in i:
-    		if phase in i or 'EXISTING' in i:
+    		if phase in i or 'EXISTING' in i: #For given trade, we need to turn on current phase (get from view template names) and "Existing" phase
     			rst.append(i)
     return rst
-## Setup Visibility
-def TurnON(vt,targeted_ws): #Turn on the related worksets of a view template
+## Setup visibility
+def TurnON(vt,targeted_ws): #Turn on the targeted worksets of a view template
     doc = DocumentManager.Instance.CurrentDBDocument
     view = vt
     Worksets = targeted_ws #workset name TBD
@@ -191,30 +192,30 @@ def TurnON(vt,targeted_ws): #Turn on the related worksets of a view template
     for Workset in targeted_ws:
         for ws in coll:
             if vt.IsWorksetVisible(ws.Id):
-                continue
+                continue # this line of code will be explained later
             if ws.Name.Contains(Workset) or ws.Name.Contains('LINKED') or ws.Name.Contains('Shared') or ws.Name.Contains('Workset1'):
                 view.SetWorksetVisibility(ws.Id , WorksetVisibility.Visible)
             #else:
                 #view.SetWorksetVisibility(ws.Id , WorksetVisibility.Hidden)
     TransactionManager.Instance.TransactionTaskDone()
-
-def TurnoffAll(vt):
+    
+def TurnoffAll(vt): #Turn off all the workset visibility under current view template
     doc = DocumentManager.Instance.CurrentDBDocument
     TransactionManager.Instance.EnsureInTransaction(doc)
     coll = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset)
     TransactionManager.Instance.EnsureInTransaction(doc)
     for ws in coll:
         vt.SetWorksetVisibility(ws.Id , WorksetVisibility.Hidden)
-
-#get all the view template for modification    
-vt=[t for t in FilteredElementCollector(doc).OfClass(View).ToElements() if t.IsTemplate and 'DEMO' in t.ViewName or 'NEW' in t.ViewName]
-#modify the visibility
+# Execution
+## Get all the view templates in current project    
+vt=[t for t in FilteredElementCollector(doc).OfClass(View).ToElements() if t.IsTemplate and 'DEMO' in t.ViewName or 'NEW' in t.ViewName] # select the view templates with phase
+## Modify the visibility for each view template
 for temp in vt:
     vt_temp=[]
-    TurnoffAll(temp)
+    TurnoffAll(temp) # First, we turn off all the worksets' visibility for in a view template
     vt_temp.append(temp.ViewName)
-    trade,phase=vt_temp[0].split()[0],vt_temp[0].split()[1]
-    targeted_ws=select_ws(IN[0],trade,phase)
-    TurnON(temp,targeted_ws)
-
-OUT=targeted_ws
+    trade,phase=vt_temp[0].split()[0],vt_temp[0].split()[1] # Secondly, extract the trade name and phase from the name of current view template
+    targeted_ws=select_ws(IN[0],trade,phase) # Thirdly, find all the worksets to be turned on
+    TurnON(temp,targeted_ws) #Finally, turn on all the targeted worksets in this project
+'''The reason of turn off then turn on is that we may have multiple targted worksets for a view template. When processing the second targted workset, we might change the first targeted workset (which has been turned on) to off condition by mistake. So, we cheek whether the current processed workset is on or off, if it's on, we continue without doing anything'''
+OUT='Program Finish'
